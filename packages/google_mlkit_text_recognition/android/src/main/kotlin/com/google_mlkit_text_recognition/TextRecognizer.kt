@@ -12,11 +12,15 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.google_mlkit_commons.InputImageConverter
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 class TextRecognizer(
     private val context: Context,
 ) : MethodChannel.MethodCallHandler {
     private val instances = mutableMapOf<String, com.google.mlkit.vision.text.TextRecognizer>()
+    private val executor = ThreadPoolExecutor(0, 1, 30L, TimeUnit.SECONDS, LinkedBlockingQueue())
 
     companion object {
         private const val START = "vision#startTextRecognizer"
@@ -71,7 +75,7 @@ class TextRecognizer(
 
         textRecognizer
             .process(inputImage)
-            .addOnSuccessListener { text ->
+            .addOnSuccessListener(executor) { text ->
                 val textResult =
                     mutableMapOf<String, Any>(
                         "text" to text.text,
@@ -131,7 +135,7 @@ class TextRecognizer(
                             },
                     )
                 result.success(textResult)
-            }.addOnFailureListener { e ->
+            }.addOnFailureListener(executor) { e ->
                 result.error("TextRecognizerError", e.toString(), null)
             }
     }
